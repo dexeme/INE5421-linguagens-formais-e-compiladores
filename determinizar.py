@@ -45,12 +45,6 @@ class State:
         if symbol not in self.transitions:
             self.transitions[symbol] = []
         self.transitions[symbol].append(state)
-
-    # def __str__(self):
-    #     # Formato: A,a,A;A,a,B;A,b,A;B,b,C;C,b,D
-    #     transitions_str = ';'.join(f"{self.name},{symbol},{state}" for symbol, states in self.transitions.items() for state in states)
-    #     print(self.transitions)
-    #     return transitions_str
     
     def formatted_transitions(self):
         return ''.join(f"{self.name},{symbol},{state};" for symbol, states in self.transitions.items() for state in states)
@@ -72,11 +66,22 @@ class Automaton:
             transitions_str += state.formatted_transitions()
         return transitions_str
 
-automaton = parse(determinizar1)
-print(automaton)
+    def is_deterministic(self):
+        for state in self.states.values():
+            for symbol in self.alphabet:
+                if symbol not in state.transitions:
+                    return False
+                if len(state.transitions[symbol]) > 1:
+                    return False
+        return True
 
 # Testar a função parse
 
 # print(parse(inputs[0]))
 # print(parse(inputs[1]))
 # print(parse(inputs[2]))
+
+# Testar função is_deterministic
+
+# automaton = parse(inputs[0])
+# print(automaton.is_deterministic())
