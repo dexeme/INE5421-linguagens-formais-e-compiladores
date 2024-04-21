@@ -26,10 +26,10 @@ def parse(input_str: str):
     initial_state = states_dict[initial_state_name]
     final_states = [state for name, state in states_dict.items() if state.final]
 
-    automaton = Automaton(num_states, initial_state, final_states, alphabet)
+    transitions = [transition.split(',') for transition in parts[4:]]
+    automaton = Automaton(num_states, initial_state, final_states, alphabet, transitions)
     for state in states_dict.values():
         automaton.add_state(state)
-
     return automaton
 
 
@@ -50,12 +50,13 @@ class State:
         return ''.join(f"{self.name},{symbol},{state};" for symbol, states in self.transitions.items() for state in states)
     
 class Automaton:
-    def __init__(self, num_states: int, initial_state: State, final_states: List[State], alphabet: set[str]):
+    def __init__(self, num_states: int, initial_state: State, final_states: List[State], alphabet: set[str], transitions: List[str]):
         self.num_states = num_states
         self.initial_state = initial_state
         self.final_states = final_states
         self.alphabet = alphabet
         self.states = {}
+        self.transitions = transitions
 
     def add_state(self, state: State):
         self.states[state.name] = state
@@ -81,8 +82,34 @@ class Automaton:
     def determinize(self):
         pass
 
-    def calculate_epsilon_closure(self):
-        pass
+    def process_transitions(self):
+        adjacency_list = {}
+        for src, symbol, dest in self.transitions:
+            print(src, symbol, dest)
+            if src not in adjacency_list:
+                adjacency_list[src] = {}
+            if symbol not in adjacency_list[src]:
+                adjacency_list[src][symbol] = []
+            adjacency_list[src][symbol].append(dest)
+        return adjacency_list
+
+    def compute_epsilon_closure(self, adjacency_list, epsilon_symbol='&'):
+        epsilon_closures = {}
+        def dfs(state):
+            stack = [state]
+            closure = set()
+            while stack:
+                current = stack.pop()
+                if current not in closure:
+                    closure.add(current)
+                    if current in adjacency_list and epsilon_symbol in adjacency_list[current]:
+                        stack.extend(adjacency_list[current][epsilon_symbol])
+            return closure
+
+        for state in adjacency_list:
+            epsilon_closures[state] = dfs(state)
+
+        return epsilon_closures
 
 
 
@@ -90,7 +117,7 @@ class Automaton:
 
 # Testar a função parse
 
-print(parse(inputs[0]))
+# print(parse(inputs[0]))
 # print(parse(inputs[1]))
 # print(parse(inputs[2]))
 
@@ -99,3 +126,12 @@ print(parse(inputs[0]))
 # automaton = parse(inputs[0])
 # print(automaton.is_deterministic())
 
+# Testar funções process_transitions e compute_epsilon_closure
+
+automaton = parse(inputs[1])
+transitions_str = automaton.formatted_transitions()
+print(transitions_str)
+adjacency_list = automaton.process_transitions()
+epsilon_closures = automaton.compute_epsilon_closure(adjacency_list=adjacency_list)
+print(adjacency_list)
+print(epsilon_closures)
