@@ -46,7 +46,7 @@ class State:
             self.transitions[symbol] = []
         self.transitions[symbol].append(state)
     
-    def formatted_transitions(self):
+    def __str__(self):
         return ''.join(f"{self.name},{symbol},{state};" for symbol, states in self.transitions.items() for state in states)
     
 class Automaton:
@@ -60,11 +60,14 @@ class Automaton:
     def add_state(self, state: State):
         self.states[state.name] = state
 
-    def __str__(self):
+    def formatted_transitions(self):
         transitions_str = ''
         for state in self.states.values():
-            transitions_str += state.formatted_transitions()
+            transitions_str += str(state)
         return transitions_str
+    
+    def __str__(self):
+        return f"{self.num_states};{self.initial_state.name};{{{','.join(state.name for state in self.final_states)}}};{{{','.join(sorted(self.alphabet))}}};{self.formatted_transitions()}"
 
     def is_deterministic(self):
         for state in self.states.values():
@@ -75,9 +78,19 @@ class Automaton:
                     return False
         return True
 
+    def determinize(self):
+        pass
+
+    def calculate_epsilon_closure(self):
+        pass
+
+
+
+
+
 # Testar a função parse
 
-# print(parse(inputs[0]))
+print(parse(inputs[0]))
 # print(parse(inputs[1]))
 # print(parse(inputs[2]))
 
@@ -85,3 +98,4 @@ class Automaton:
 
 # automaton = parse(inputs[0])
 # print(automaton.is_deterministic())
+
