@@ -1,11 +1,5 @@
 from typing import List, Set
 
-determinizar1 = "4;A;{D};{a,b};A,a,A;A,a,B;A,b,A;B,b,C;C,b,D"
-determinizar2 = "3;A;{C};{1,2,3,&};A,1,A;A,&,B;B,2,B;B,&,C;C,3,C"
-determinizar3 = "4;P;{S};{0,1};P,0,P;P,0,Q;P,1,P;Q,0,R;Q,1,R;R,0,S;S,0,S;S,1,S"
-
-inputs = [determinizar1, determinizar2, determinizar3]
-
 def parse(input_str: str):
     parts = input_str.split(';')
     num_states = int(parts[0])
@@ -27,6 +21,7 @@ def parse(input_str: str):
     final_states = [state for name, state in states_dict.items() if state.final]
 
     transitions = [transition.split(',') for transition in parts[4:]]
+
     automaton = Automaton(num_states, initial_state, final_states, alphabet, transitions)
     for state in states_dict.values():
         automaton.add_state(state)
@@ -50,7 +45,7 @@ class State:
         return ''.join(f"{self.name},{symbol},{state};" for symbol, states in self.transitions.items() for state in states)
     
 class Automaton:
-    def __init__(self, num_states: int, initial_state: State, final_states: List[State], alphabet: set[str], transitions: List[str]):
+    def __init__(self, num_states: int, initial_state: State, final_states: List[State], alphabet: Set[str], transitions: List[str]):
         self.num_states = num_states
         self.initial_state = initial_state
         self.final_states = final_states
@@ -82,9 +77,10 @@ class Automaton:
 
     def process_transitions(self):
         adjacency_list = {}
+        for state in self.states:
+            adjacency_list[state] = {}
         for src, symbol, dest in self.transitions:
-            if src not in adjacency_list:
-                adjacency_list[src] = {}
+
             if symbol not in adjacency_list[src]:
                 adjacency_list[src][symbol] = []
             adjacency_list[src][symbol].append(dest)
@@ -105,7 +101,6 @@ class Automaton:
 
         for state in adjacency_list:
             epsilon_closures[state] = dfs(state)
-
         return epsilon_closures
 
     def verify_if_group_is_final(self, group, final_states):
@@ -119,83 +114,62 @@ class Automaton:
         reachable_states = []
         if state in adjacency_list and symbol in adjacency_list[state]:
             reachable_states.extend(adjacency_list[state][symbol])
-            print(f'Estados alcançáveis a partir de {state} com símbolo {symbol}: {reachable_states}')
         return reachable_states
     
 
     def determinize(self):
         if self.is_deterministic(): return self
 
-        print(self.transitions)
-
         adjacency_list = self.process_transitions()
         epsilon_closures = self.compute_epsilon_closure(adjacency_list)
-        print('Fecho épsilon', epsilon_closures) 
-
         new_alphabet = self.alphabet - {'&'}
-        print('Novo alfabeto', new_alphabet)
 
-        num_states = 0
         new_states = {}
-        for state, closure in epsilon_closures.items():
-            new_state = ''.join(sorted(closure))
-            new_states[new_state] = State(new_state, self.verify_if_group_is_final(new_state, [final.name for final in self.final_states]))
 
         new_initial_state = ''.join(sorted(epsilon_closures[self.initial_state.name]))
-        print('Novo estado inicial', new_initial_state)
         
-
-        for state in new_states:
-            print(state + '', new_states[state].final, new_states[state].transitions)
-            transicoes = []
+        transicoes = []
+        lista = [new_initial_state]
+        while lista:
+            state = lista.pop(0)
+            new_states[state] = State(state, self.verify_if_group_is_final(state, [final.name for final in self.final_states]))
             for symbol in new_alphabet:
                 reachable_states = []
                 for old_state in state:
                     for new_state in self.get_reachable_states(adjacency_list, old_state, symbol):
-                        reachable_states.extend(epsilon_closures[new_state])
+                        reachable_states = list(set(reachable_states + list(epsilon_closures[new_state])))
                 if reachable_states:
                     new_state = ''.join(sorted(reachable_states))
-                    transicoes.append((symbol, new_state))
-                    if new_state not in new_states:
-                        new_states[new_state] = State(new_state, self.verify_if_group_is_final(new_state, [final.name for final in self.final_states]))
-                    print(f'Transição de {state} com símbolo {symbol} para {new_state}')
+                    if (state, symbol, new_state) not in transicoes:
+                        transicoes.append((state, symbol, new_state))
 
+                        if new_state not in new_states:
+                            new_states[new_state] = State(new_state, self.verify_if_group_is_final(new_state, [final.name for final in self.final_states]))
+                            lista.append(new_state)
+                            
+                    # cria transição
+                        new_states[state].add_transition(symbol, new_states[new_state])
 
+        formatted_string = ''
+        formatted_string += f"{len(new_states)};"
+        formatted_string += "{" + str(new_initial_state) + "};"
+        formatted_string += "{" + ','.join(sorted(["{"+ str(state) + "}" for state in new_states if new_states[state].final])) + "};"
+        formatted_string += "{" + ','.join(sorted(new_alphabet)) + "};"
+        # Organizando e formatando as transições
+        sorted_transitions = sorted(
+            transicoes, 
+            key=lambda x: (x[0], x[1])
+        )
 
+        # Concatenando transições formatadas
+        for transition in sorted_transitions:
+            formatted_string += "{" + transition[0] + "}," + transition[1] + ",{" + transition[2] + "};"
 
+        return formatted_string
 
-        
+print(parse(input()).determinize())
 
+# 3;A;{C};{1,2,3,&};A,1,A;A,&,B;B,2,B;B,&,C;C,3,C
+# 4;P;{S};{0,1};P,0,P;P,0,Q;P,1,P;Q,0,R;Q,1,R;R,0,S;S,0,S;S,1,S
+# 4;A;{D};{a,b};A,a,A;A,a,B;A,b,A;B,b,C;C,b,D
 
-
-        # for state in new_states:
-        #     print('Estado',state)
-        #     print('é final?',new_states[state].final)
-        #     print('Transições',new_states[state].transitions)
-        
-
-# Testar a função parse
-
-# print(parse(inputs[0]))
-# print(parse(inputs[1]))
-# print(parse(inputs[2]))
-
-# Testar função is_deterministic
-
-# automaton = parse(inputs[0])
-# print(automaton.is_deterministic())
-
-# Testar funções process_transitions e compute_epsilon_closure
-
-# automaton = parse(inputs[1])
-# transitions_str = automaton.formatted_transitions()
-# print(transitions_str)
-# adjacency_list = automaton.process_transitions()
-# epsilon_closures = automaton.compute_epsilon_closure(adjacency_list=adjacency_list)
-# print(adjacency_list)
-# print(epsilon_closures)
-
-# Testar função determinize
-
-automaton = parse(inputs[1])
-determinized_automaton = automaton.determinize()
